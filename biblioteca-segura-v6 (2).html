@@ -1,0 +1,1510 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Biblioteca Segura — Network Monitor v6</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+/* ═══════════════════════════════════════════════════
+   RESET & DESIGN TOKENS
+═══════════════════════════════════════════════════ */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#07080c;
+  --bg-grad:radial-gradient(1200px 600px at 80% -10%,rgba(74,158,255,.06),transparent 60%),
+            radial-gradient(900px 500px at -10% 110%,rgba(155,109,255,.05),transparent 60%),
+            #07080c;
+  --card:#0e1016;
+  --card2:#0a0c12;
+  --card3:#11141d;
+  --border:#1c2030;
+  --border2:#252b3a;
+  --blue:#4a9eff;
+  --blue-glow:rgba(74,158,255,.35);
+  --red:#e04f4f;
+  --amber:#e0a030;
+  --green:#38b260;
+  --purple:#9b6dff;
+  --muted:#4a5568;
+  --text:#c8d3e0;
+  --text2:#8899aa;
+  --shadow-md:0 4px 20px rgba(0,0,0,.4);
+  --shadow-lg:0 12px 40px rgba(0,0,0,.55);
+}
+html,body{height:100%}
+body{
+  background:var(--bg-grad);
+  color:var(--text);
+  font-family:'Syne',sans-serif;
+  min-height:100vh;
+  overflow-x:hidden;
+  -webkit-font-smoothing:antialiased;
+}
+
+/* Scrollbars */
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
+::-webkit-scrollbar-thumb:hover{background:#323a4f}
+
+/* ═══════════════════════════════════════════════════
+   ECRÃ DE LOGIN
+═══════════════════════════════════════════════════ */
+#login-screen{
+  position:fixed;inset:0;
+  background:var(--bg-grad);
+  display:flex;align-items:center;justify-content:center;
+  z-index:1000;
+  animation:fadeIn .4s ease;
+  padding:20px;
+}
+#login-screen.hidden{
+  animation:fadeOut .4s ease forwards;
+  pointer-events:none;
+}
+.login-box{
+  width:100%;max-width:380px;
+  background:linear-gradient(180deg,var(--card) 0%,var(--card2) 100%);
+  border:1px solid var(--border2);
+  border-radius:14px;
+  padding:38px 34px;
+  position:relative;
+  overflow:hidden;
+  box-shadow:var(--shadow-lg);
+}
+.login-box::before{
+  content:'';
+  position:absolute;top:-80px;left:-80px;
+  width:240px;height:240px;
+  background:radial-gradient(circle,rgba(74,158,255,.12) 0%,transparent 70%);
+  pointer-events:none;
+}
+.login-box::after{
+  content:'';
+  position:absolute;bottom:-100px;right:-100px;
+  width:260px;height:260px;
+  background:radial-gradient(circle,rgba(155,109,255,.08) 0%,transparent 70%);
+  pointer-events:none;
+}
+.login-logo{
+  font-size:11px;font-weight:700;letter-spacing:.18em;
+  color:var(--blue);text-transform:uppercase;
+  margin-bottom:6px;
+  position:relative;
+}
+.login-logo::before{
+  content:'●';margin-right:6px;color:var(--green);
+  text-shadow:0 0 6px var(--green);
+}
+.login-title{
+  font-size:24px;font-weight:800;
+  margin-bottom:4px;
+  line-height:1.2;
+  background:linear-gradient(180deg,#fff,#94a3b8);
+  -webkit-background-clip:text;background-clip:text;
+  -webkit-text-fill-color:transparent;
+  position:relative;
+}
+.login-sub{
+  font-size:12px;color:var(--text2);
+  margin-bottom:28px;
+  position:relative;
+}
+.login-field{margin-bottom:14px;position:relative}
+.login-field label{
+  display:block;font-size:10px;font-weight:700;
+  letter-spacing:.12em;color:var(--text2);
+  text-transform:uppercase;margin-bottom:6px;
+}
+.login-field input{
+  width:100%;padding:11px 13px;
+  background:var(--card2);
+  border:1px solid var(--border);
+  border-radius:7px;
+  color:var(--text);
+  font-family:'JetBrains Mono',monospace;
+  font-size:13px;
+  outline:none;
+  transition:border-color .2s,box-shadow .2s;
+}
+.login-field input:focus{
+  border-color:var(--blue);
+  box-shadow:0 0 0 3px rgba(74,158,255,.15);
+}
+.login-field input.error{
+  border-color:var(--red);
+  box-shadow:0 0 0 3px rgba(224,79,79,.15);
+}
+.login-field input::placeholder{color:var(--muted)}
+.login-btn{
+  width:100%;padding:12px;
+  background:linear-gradient(180deg,var(--blue),#3b8de8);
+  color:#000;
+  border:none;border-radius:7px;
+  font-family:'Syne',sans-serif;font-size:13px;font-weight:700;
+  letter-spacing:.06em;cursor:pointer;
+  transition:transform .1s,box-shadow .2s,filter .2s;
+  margin-top:6px;
+  position:relative;
+  box-shadow:0 4px 14px rgba(74,158,255,.25);
+}
+.login-btn:hover{filter:brightness(1.08);box-shadow:0 6px 20px rgba(74,158,255,.4)}
+.login-btn:active{transform:scale(.98)}
+#login-error{
+  font-family:'JetBrains Mono',monospace;
+  font-size:11px;color:var(--red);
+  margin-top:10px;min-height:16px;
+  text-align:center;
+}
+.login-footer{
+  font-size:10px;color:var(--muted);
+  text-align:center;margin-top:22px;
+  border-top:1px solid var(--border);
+  padding-top:14px;line-height:1.6;
+  position:relative;
+}
+.login-footer .lock-icon{
+  font-size:14px;color:var(--text2);display:block;margin-bottom:4px;
+}
+
+/* ═══════════════════════════════════════════════════
+   DASHBOARD
+═══════════════════════════════════════════════════ */
+#dashboard{
+  display:none;
+  padding:18px 20px 28px;
+  animation:fadeIn .4s ease;
+  max-width:1600px;margin:0 auto;
+}
+#dashboard.visible{display:block}
+
+/* HEADER */
+header{
+  display:flex;justify-content:space-between;align-items:center;
+  border-bottom:1px solid var(--border);
+  padding-bottom:14px;margin-bottom:18px;
+  flex-wrap:wrap;gap:12px;
+}
+.header-left{display:flex;align-items:center;gap:12px;min-width:0}
+.header-left h1{
+  margin:0;font-size:15px;font-weight:700;letter-spacing:.06em;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.header-left h1 .accent{font-weight:400;color:var(--blue);margin-left:6px}
+.header-right{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.clock{
+  font-family:'JetBrains Mono',monospace;color:var(--blue);
+  font-size:13px;letter-spacing:.05em;
+  background:var(--card);padding:5px 11px;border-radius:6px;
+  border:1px solid var(--border);
+}
+.admin-badge{
+  display:flex;align-items:center;gap:7px;
+  background:var(--card);border:1px solid var(--border2);
+  border-radius:20px;padding:5px 13px 5px 9px;
+  font-size:11px;color:var(--text2);
+}
+.admin-dot{
+  width:7px;height:7px;border-radius:50%;
+  background:var(--green);
+  box-shadow:0 0 6px var(--green);
+  animation:pulse-soft 2s infinite;
+}
+.logout-btn{
+  padding:6px 12px;border-radius:6px;
+  border:1px solid var(--border);
+  background:transparent;color:var(--muted);
+  font-family:'Syne',sans-serif;font-size:10px;font-weight:700;
+  cursor:pointer;transition:.15s;letter-spacing:.06em;
+}
+.logout-btn:hover{color:var(--red);border-color:var(--red);background:rgba(224,79,79,.06)}
+
+/* STATS ROW */
+.stats-row{
+  display:grid;
+  grid-template-columns:repeat(6,minmax(0,1fr));
+  gap:10px;margin-bottom:18px;
+}
+.stat-card{
+  background:linear-gradient(180deg,var(--card),var(--card2));
+  border:1px solid var(--border);
+  border-radius:9px;padding:11px 13px;
+  position:relative;overflow:hidden;
+  transition:border-color .2s,transform .2s;
+}
+.stat-card:hover{border-color:var(--border2);transform:translateY(-1px)}
+.stat-card .stat-label{
+  font-size:9px;color:var(--text2);
+  text-transform:uppercase;letter-spacing:.1em;
+  display:block;margin-bottom:4px;
+}
+.stat-card .stat-value{
+  font-size:20px;font-weight:700;display:block;
+  font-family:'JetBrains Mono',monospace;
+  letter-spacing:-.02em;
+}
+
+/* MAIN GRID */
+.main-grid{
+  display:grid;
+  grid-template-columns:1.6fr 1fr 1fr;
+  gap:14px;
+  align-items:start;
+}
+.col-stack{display:flex;flex-direction:column;gap:14px}
+.card{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:10px;padding:16px;
+  box-shadow:var(--shadow-md);
+}
+h3{
+  margin:0 0 12px;font-size:11px;font-weight:700;
+  letter-spacing:.12em;color:var(--text2);text-transform:uppercase;
+  display:flex;align-items:center;gap:7px;
+}
+h3 .ico{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:18px;height:18px;border-radius:5px;
+  background:var(--card2);border:1px solid var(--border);
+  font-size:10px;color:var(--blue);
+}
+h3.purple .ico{color:var(--purple);border-color:rgba(155,109,255,.3)}
+h3.green .ico{color:var(--green);border-color:rgba(56,178,96,.3)}
+h3.amber .ico{color:var(--amber);border-color:rgba(224,160,48,.3)}
+.divider{border:none;border-top:1px solid var(--border);margin:14px 0}
+
+/* WI-FI / SYSTEM CARD */
+.sys-grid{
+  display:grid;grid-template-columns:1fr 1fr;
+  gap:6px 12px;
+  font-family:'JetBrains Mono',monospace;font-size:11px;
+}
+.sys-row{display:flex;justify-content:space-between;gap:8px;padding:3px 0;border-bottom:1px dashed var(--border);min-width:0}
+.sys-row:last-child{border-bottom:none}
+.sys-key{color:var(--text2);font-size:10px;text-transform:uppercase;letter-spacing:.06em}
+.sys-val{color:var(--text);text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:1}
+.sys-val.blue{color:var(--blue)}
+.sys-val.green{color:var(--green)}
+.sys-val.amber{color:var(--amber)}
+.sig-bar{
+  display:inline-flex;align-items:flex-end;gap:1.5px;height:11px;
+}
+.sig-bar span{display:block;width:3px;background:var(--border2);border-radius:1px}
+.sig-bar span.on{background:var(--green)}
+.sig-bar span.warn{background:var(--amber)}
+.sig-bar span.bad{background:var(--red)}
+
+/* CONFIG */
+.config-row{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.config-label{font-size:11px;color:var(--text2);min-width:100px}
+.config-val{
+  font-family:'JetBrains Mono',monospace;font-size:12px;
+  color:var(--blue);min-width:48px;text-align:right;
+}
+input[type=range]{flex:1;accent-color:var(--blue);height:4px}
+.window-btns{display:flex;gap:6px;flex:1}
+.wbtn{
+  flex:1;padding:5px 0;font-size:10px;
+  font-family:'Syne',sans-serif;font-weight:700;
+  cursor:pointer;border-radius:5px;
+  border:1px solid var(--border);
+  background:var(--card2);color:var(--text2);transition:.15s;
+}
+.wbtn:hover{color:var(--text);border-color:var(--border2)}
+.wbtn.active{background:var(--blue);color:#000;border-color:var(--blue)}
+.config-hint{
+  font-size:10px;color:var(--muted);line-height:1.6;
+  background:var(--card2);padding:8px 10px;border-radius:6px;
+  border-left:2px solid var(--border2);
+}
+
+/* AUTO-BLOCK RULES */
+.rules-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.rule-card{
+  background:var(--card2);border:1px solid var(--border);
+  border-radius:7px;padding:8px 10px;
+}
+.rule-card label{
+  font-size:9px;color:var(--text2);text-transform:uppercase;
+  letter-spacing:.08em;display:block;margin-bottom:3px;
+}
+.rule-card input{
+  width:100%;background:transparent;border:none;outline:none;
+  color:var(--amber);font-family:'JetBrains Mono',monospace;
+  font-size:13px;font-weight:700;
+}
+.toggle-row{
+  display:flex;align-items:center;justify-content:space-between;
+  background:var(--card2);padding:8px 10px;border-radius:7px;
+  border:1px solid var(--border);font-size:11px;
+}
+.switch{
+  position:relative;width:34px;height:18px;
+  background:var(--border);border-radius:10px;cursor:pointer;
+  transition:.2s;flex-shrink:0;
+}
+.switch::after{
+  content:'';position:absolute;top:2px;left:2px;
+  width:14px;height:14px;background:#fff;border-radius:50%;
+  transition:.2s;
+}
+.switch.on{background:var(--green)}
+.switch.on::after{left:18px}
+
+/* PASSWORD */
+.change-pass-wrap{display:flex;flex-direction:column;gap:6px}
+.change-pass-wrap input{
+  width:100%;padding:8px 11px;
+  background:var(--card2);border:1px solid var(--border);
+  border-radius:6px;color:var(--text);
+  font-family:'JetBrains Mono',monospace;font-size:11px;
+  outline:none;transition:border-color .2s;
+}
+.change-pass-wrap input:focus{border-color:var(--purple)}
+.change-pass-wrap input::placeholder{color:var(--muted)}
+.btn-purple{
+  width:100%;padding:8px;border-radius:6px;
+  font-family:'Syne',sans-serif;font-size:10px;font-weight:700;
+  cursor:pointer;background:transparent;
+  color:var(--purple);border:1px solid var(--purple);
+  transition:.15s;letter-spacing:.05em;
+}
+.btn-purple:hover{background:var(--purple);color:#000}
+#pass-status{font-family:'JetBrains Mono',monospace;font-size:10px;min-height:14px;margin-top:2px}
+
+/* DEVICES */
+.device-tabs{display:flex;gap:5px;margin-bottom:10px}
+.dtab{
+  padding:5px 11px;font-size:10px;
+  font-family:'Syne',sans-serif;font-weight:700;
+  cursor:pointer;border-radius:5px;letter-spacing:.05em;
+  border:1px solid var(--border);
+  background:var(--card2);color:var(--text2);
+  transition:.15s;
+}
+.dtab.active{background:var(--blue);color:#000;border-color:var(--blue)}
+.dtab .badge{
+  background:rgba(0,0,0,.25);padding:1px 5px;border-radius:8px;
+  margin-left:4px;font-family:'JetBrains Mono',monospace;font-size:9px;
+}
+.dtab:not(.active) .badge{background:var(--border)}
+#device-list,#blocked-list{
+  list-style:none;display:flex;flex-direction:column;gap:6px;
+  max-height:380px;overflow-y:auto;padding-right:4px;
+}
+.device-item{
+  padding:9px 11px;background:var(--card2);
+  border:1px solid var(--border);border-radius:7px;
+  font-family:'JetBrains Mono',monospace;font-size:10px;
+  transition:border-color .2s,background .2s;
+}
+.device-item:hover{background:var(--card3);border-color:var(--border2)}
+.device-item.over-limit{border-color:var(--amber);background:rgba(224,160,48,.04)}
+.device-item.alerting{border-color:var(--red);background:rgba(224,79,79,.05)}
+.device-item.blocked{border-color:var(--red);background:rgba(224,79,79,.08);opacity:.85}
+.device-top{display:flex;align-items:center;gap:7px}
+.dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.dot.online{background:var(--green);box-shadow:0 0 5px var(--green)}
+.dot.alerting{background:var(--red);box-shadow:0 0 5px var(--red);animation:pulse 1s infinite}
+.dot.over{background:var(--amber);box-shadow:0 0 5px var(--amber)}
+.dot.blocked{background:var(--red)}
+.device-name{flex:1;color:var(--text);font-size:11px;font-weight:500;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.device-ip{color:var(--text2)}
+.device-mbps{min-width:62px;text-align:right;font-weight:500}
+.device-mbps.hot{color:var(--red)}
+.device-mbps.normal{color:var(--blue)}
+.device-mbps.blocked{color:var(--muted);text-decoration:line-through}
+.btn-mini{
+  padding:3px 7px;font-size:9px;
+  font-family:'Syne',sans-serif;font-weight:700;
+  cursor:pointer;border-radius:4px;
+  border:1px solid var(--border);
+  background:transparent;color:var(--muted);
+  transition:.15s;letter-spacing:.04em;
+}
+.btn-mini.disc:hover{color:var(--text);border-color:var(--border2)}
+.btn-mini.block:hover{color:var(--red);border-color:var(--red);background:rgba(224,79,79,.08)}
+.btn-mini.unblock:hover{color:var(--green);border-color:var(--green);background:rgba(56,178,96,.08)}
+.device-actions{display:flex;gap:4px;margin-left:6px}
+.progress-wrap{margin-top:6px}
+.progress-track{height:4px;background:var(--border);border-radius:3px;overflow:hidden}
+.progress-bar{height:100%;border-radius:3px;transition:width .4s,background .4s}
+.progress-info{display:flex;justify-content:space-between;font-size:9px;color:var(--text2);margin-top:3px}
+.no-devices{color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:10px;padding:10px;text-align:center;background:var(--card2);border-radius:6px;border:1px dashed var(--border)}
+.block-reason{
+  display:block;margin-top:5px;
+  font-size:9px;color:var(--red);
+  font-family:'JetBrains Mono',monospace;
+}
+
+/* CONNECT FORM */
+#connect-form{display:flex;flex-direction:column;gap:7px}
+#connect-form input{
+  width:100%;padding:8px 11px;
+  background:var(--card2);border:1px solid var(--border);
+  border-radius:6px;color:var(--text);
+  font-family:'JetBrains Mono',monospace;font-size:11px;
+  outline:none;transition:border-color .2s;
+}
+#connect-form input:focus{border-color:var(--blue)}
+#connect-form input::placeholder{color:var(--muted)}
+.btn-primary{
+  padding:9px;width:100%;border-radius:6px;
+  font-family:'Syne',sans-serif;font-size:11px;font-weight:700;
+  cursor:pointer;background:linear-gradient(180deg,var(--blue),#3b8de8);
+  color:#000;border:none;transition:.15s;letter-spacing:.05em;
+  box-shadow:0 2px 8px rgba(74,158,255,.2);
+}
+.btn-primary:hover{filter:brightness(1.08);box-shadow:0 4px 12px rgba(74,158,255,.35)}
+#connect-status{font-family:'JetBrains Mono',monospace;font-size:10px;min-height:14px}
+
+/* FEED */
+#ai-feed{
+  list-style:none;display:flex;flex-direction:column;gap:6px;
+  max-height:340px;overflow-y:auto;padding-right:4px;
+  font-family:'JetBrains Mono',monospace;font-size:10px;
+}
+.feed-empty{
+  color:var(--muted);font-family:'JetBrains Mono',monospace;
+  font-size:10px;padding:10px;text-align:center;
+  background:var(--card2);border-radius:6px;border:1px dashed var(--border);
+}
+.feed-item{
+  padding:10px 11px;
+  border-left:3px solid var(--blue);
+  background:#080a10;border-radius:0 6px 6px 0;
+  animation:slideIn .25s ease-out;line-height:1.55;
+}
+.feed-item.critical{border-left-color:var(--red)}
+.feed-item.warning{border-left-color:var(--amber)}
+.feed-item.success{border-left-color:var(--green)}
+.feed-time{
+  font-size:8px;color:var(--muted);
+  letter-spacing:.05em;float:right;
+}
+.tag{
+  font-size:9px;padding:2px 6px;border-radius:3px;
+  font-family:'Syne',sans-serif;font-weight:700;
+  letter-spacing:.06em;vertical-align:middle;margin-right:5px;
+}
+.tag-red{background:rgba(224,79,79,.15);color:var(--red);border:1px solid rgba(224,79,79,.3)}
+.tag-amber{background:rgba(224,160,48,.15);color:var(--amber);border:1px solid rgba(224,160,48,.3)}
+.tag-green{background:rgba(56,178,96,.15);color:var(--green);border:1px solid rgba(56,178,96,.3)}
+.tag-blue{background:rgba(74,158,255,.15);color:var(--blue);border:1px solid rgba(74,158,255,.3)}
+.ai-controls{display:flex;gap:5px;margin-top:8px}
+.btn-ai{
+  padding:4px 8px;font-size:9px;cursor:pointer;border-radius:4px;
+  border:1px solid var(--border);background:#12151e;
+  color:var(--text2);transition:.15s;
+  font-family:'Syne',sans-serif;font-weight:700;letter-spacing:.04em;
+}
+.btn-ai:hover{background:var(--border)}
+.btn-confirm:hover{color:var(--green);border-color:var(--green)}
+.btn-ignore:hover{color:var(--amber);border-color:var(--amber)}
+.btn-block:hover{color:var(--red);border-color:var(--red)}
+.btn-ai:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+
+/* TOAST */
+#toast-container{
+  position:fixed;top:18px;right:18px;z-index:1500;
+  display:flex;flex-direction:column;gap:8px;
+  pointer-events:none;
+}
+.toast{
+  background:var(--card);border:1px solid var(--border2);
+  border-left:3px solid var(--blue);
+  border-radius:7px;padding:10px 14px;
+  font-size:12px;color:var(--text);
+  min-width:240px;max-width:340px;
+  box-shadow:var(--shadow-lg);
+  animation:toastIn .25s ease-out;
+  pointer-events:auto;
+}
+.toast.critical{border-left-color:var(--red)}
+.toast.success{border-left-color:var(--green)}
+.toast.warning{border-left-color:var(--amber)}
+.toast strong{font-size:11px;letter-spacing:.04em}
+.toast .t-sub{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text2);margin-top:3px}
+
+/* ANIMAÇÕES */
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes fadeOut{from{opacity:1}to{opacity:0;visibility:hidden}}
+@keyframes slideIn{from{opacity:0;transform:translateX(10px)}to{opacity:1;transform:translateX(0)}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+@keyframes pulse-soft{0%,100%{opacity:1}50%{opacity:.5}}
+@keyframes toastIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
+@keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-5px)}80%{transform:translateX(5px)}}
+
+canvas{max-width:100%;display:block}
+
+/* RESPONSIVE */
+@media (max-width:1100px){
+  .main-grid{grid-template-columns:1fr 1fr;gap:12px}
+  .col-stack{grid-column:span 2}
+  .stats-row{grid-template-columns:repeat(3,1fr)}
+}
+@media (max-width:680px){
+  #dashboard{padding:12px}
+  .main-grid{grid-template-columns:1fr}
+  .col-stack{grid-column:span 1}
+  .stats-row{grid-template-columns:repeat(2,1fr);gap:8px}
+  .sys-grid{grid-template-columns:1fr;font-size:10px}
+  .sys-row{padding:5px 0}
+  .rules-grid{grid-template-columns:1fr 1fr;gap:6px}
+  .header-left h1{font-size:12px}
+  .header-right{gap:8px}
+  .clock{font-size:11px;padding:4px 8px}
+  .card{padding:13px;overflow:hidden}
+  h3{font-size:10px}
+  .device-name{font-size:10px}
+  .config-label{min-width:80px;font-size:10px}
+  .device-top{flex-wrap:wrap;gap:5px}
+  .device-mbps{min-width:auto}
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════
+     ECRÃ DE LOGIN
+═══════════════════════════════════════════════ -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">Biblioteca Segura</div>
+    <h2 class="login-title">Acesso Restrito</h2>
+    <p class="login-sub">Insere as tuas credenciais de administrador</p>
+
+    <div class="login-field">
+      <label for="inp-user">Utilizador</label>
+      <input type="text" id="inp-user" placeholder="Nome de utilizador" autocomplete="username" onkeydown="if(event.key==='Enter')tryLogin()">
+    </div>
+    <div class="login-field">
+      <label for="inp-pass">Palavra-passe</label>
+      <input type="password" id="inp-pass" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')tryLogin()">
+    </div>
+
+    <button class="login-btn" onclick="tryLogin()">Entrar no sistema</button>
+    <div id="login-error" role="alert"></div>
+
+    <div class="login-footer">
+      <span class="lock-icon">🔒</span>
+      Sessão encriptada · Acesso restrito a administradores autorizados
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     DASHBOARD
+═══════════════════════════════════════════════ -->
+<div id="dashboard">
+
+  <header>
+    <div class="header-left">
+      <h1>BIBLIOTECA SEGURA<span class="accent">| Network Monitor v6</span></h1>
+    </div>
+    <div class="header-right">
+      <div id="clock" class="clock">--:--:--</div>
+      <div class="admin-badge">
+        <span class="admin-dot"></span>
+        <span id="admin-name">admin</span>
+      </div>
+      <button class="logout-btn" onclick="logout()">⎋ Sair</button>
+    </div>
+  </header>
+
+  <div class="stats-row">
+    <div class="stat-card">
+      <span class="stat-label">Online</span>
+      <span class="stat-value" id="count-online" style="color:var(--green)">0</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-label">Bloqueados</span>
+      <span class="stat-value" id="count-blocked" style="color:var(--red)">0</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-label">Limite (GB)</span>
+      <span class="stat-value" id="stat-limit" style="color:var(--purple)">10</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-label">Janela</span>
+      <span class="stat-value" id="stat-window" style="color:var(--blue)">1 h</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-label">Alertas</span>
+      <span class="stat-value" id="count-alerts" style="color:var(--amber)">0</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-label">IA Score</span>
+      <span class="stat-value" id="ai-accuracy" style="color:var(--green)">—</span>
+    </div>
+  </div>
+
+  <div class="main-grid">
+
+    <!-- COLUNA 1: GRÁFICO + WI-FI + CONFIG -->
+    <div class="col-stack">
+
+      <div class="card">
+        <h3><span class="ico">▲</span>Tráfego em tempo real</h3>
+        <canvas id="trafficChart" height="160"></canvas>
+      </div>
+
+      <div class="card">
+        <h3 class="green"><span class="ico">⌘</span>Sistema & Rede deste PC</h3>
+        <div class="sys-grid">
+          <div class="sys-row"><span class="sys-key">Plataforma</span><span class="sys-val" id="sys-platform">—</span></div>
+          <div class="sys-row"><span class="sys-key">Browser</span><span class="sys-val" id="sys-browser">—</span></div>
+          <div class="sys-row"><span class="sys-key">CPU Cores</span><span class="sys-val blue" id="sys-cores">—</span></div>
+          <div class="sys-row"><span class="sys-key">Memória</span><span class="sys-val blue" id="sys-mem">—</span></div>
+          <div class="sys-row"><span class="sys-key">Idioma</span><span class="sys-val" id="sys-lang">—</span></div>
+          <div class="sys-row"><span class="sys-key">Resolução</span><span class="sys-val" id="sys-res">—</span></div>
+          <div class="sys-row"><span class="sys-key">Tipo de ligação</span><span class="sys-val green" id="sys-conn">—</span></div>
+          <div class="sys-row"><span class="sys-key">Velocidade efet.</span><span class="sys-val green" id="sys-speed">—</span></div>
+          <div class="sys-row"><span class="sys-key">RTT (latência)</span><span class="sys-val amber" id="sys-rtt">—</span></div>
+          <div class="sys-row"><span class="sys-key">Sinal Wi-Fi</span><span class="sys-val" id="sys-signal">—</span></div>
+          <div class="sys-row"><span class="sys-key">SSID (sim.)</span><span class="sys-val" id="sys-ssid">—</span></div>
+          <div class="sys-row"><span class="sys-key">Canal (sim.)</span><span class="sys-val" id="sys-channel">—</span></div>
+          <div class="sys-row"><span class="sys-key">IP público</span><span class="sys-val blue" id="sys-ipv4">a obter…</span></div>
+          <div class="sys-row"><span class="sys-key">ISP</span><span class="sys-val" id="sys-isp">—</span></div>
+          <div class="sys-row"><span class="sys-key">Localização</span><span class="sys-val" id="sys-loc">—</span></div>
+          <div class="sys-row"><span class="sys-key">Estado</span><span class="sys-val green" id="sys-online-state">●  Online</span></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 class="purple"><span class="ico">⚙</span>Configurações do administrador</h3>
+
+        <div class="config-row">
+          <span class="config-label">Limite (GB)</span>
+          <input type="range" id="slider-limit" min="1" max="50" value="10" step="1" oninput="onLimitChange(this.value)">
+          <span class="config-val" id="val-limit">10 GB</span>
+        </div>
+
+        <div class="config-row">
+          <span class="config-label">Janela de tempo</span>
+          <div class="window-btns">
+            <button class="wbtn active" data-min="60"   onclick="setWindow(this)">1 h</button>
+            <button class="wbtn"        data-min="360"  onclick="setWindow(this)">6 h</button>
+            <button class="wbtn"        data-min="1440" onclick="setWindow(this)">24 h</button>
+          </div>
+        </div>
+
+        <p class="config-hint">
+          Cada dispositivo tem janela independente. O contador reinicia automaticamente após expirar.
+        </p>
+
+        <hr class="divider">
+
+        <h3 class="amber" style="margin-top:0"><span class="ico">⚡</span>Auto-bloqueio inteligente</h3>
+
+        <div class="toggle-row" style="margin-bottom:10px">
+          <span>Ativar bloqueio automático</span>
+          <div class="switch on" id="sw-autoblock" onclick="toggleAutoBlock()"></div>
+        </div>
+
+        <div class="rules-grid">
+          <div class="rule-card">
+            <label>Mbps máx.</label>
+            <input type="number" id="rule-mbps" value="50" min="1" max="1000" oninput="updateRules()">
+          </div>
+          <div class="rule-card">
+            <label>Excessos antes de bloquear</label>
+            <input type="number" id="rule-strikes" value="3" min="1" max="10" oninput="updateRules()">
+          </div>
+        </div>
+
+        <p class="config-hint" style="margin-top:8px">
+          Um dispositivo é bloqueado automaticamente se exceder o limite de Mbps acima ou ultrapassar o quota de GB o número definido de vezes.
+        </p>
+
+        <hr class="divider">
+
+        <h3 class="purple" style="margin-top:0"><span class="ico">🔑</span>Alterar palavra-passe</h3>
+        <div class="change-pass-wrap">
+          <input type="password" id="old-pass"  placeholder="Senha atual" autocomplete="current-password">
+          <input type="password" id="new-pass"  placeholder="Nova senha (mín. 6 caracteres)" autocomplete="new-password">
+          <input type="password" id="new-pass2" placeholder="Confirmar nova senha" autocomplete="new-password">
+          <button class="btn-purple" onclick="changePassword()">Atualizar senha</button>
+          <div id="pass-status" role="status"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- COLUNA 2: DISPOSITIVOS -->
+    <div class="card">
+      <h3><span class="ico">▣</span>Dispositivos na rede</h3>
+
+      <div class="device-tabs">
+        <button class="dtab active" data-tab="online" onclick="switchTab(this)">Ativos <span class="badge" id="tab-count-online">0</span></button>
+        <button class="dtab" data-tab="blocked" onclick="switchTab(this)">Bloqueados <span class="badge" id="tab-count-blocked">0</span></button>
+      </div>
+
+      <div id="tab-online">
+        <p id="no-devices" class="no-devices">Nenhum dispositivo conectado.</p>
+        <ul id="device-list" role="list" aria-label="Dispositivos ativos"></ul>
+      </div>
+      <div id="tab-blocked" style="display:none">
+        <p id="no-blocked" class="no-devices">Nenhum dispositivo bloqueado.</p>
+        <ul id="blocked-list" role="list" aria-label="Dispositivos bloqueados"></ul>
+      </div>
+    </div>
+
+    <!-- COLUNA 3: ADD + FEED -->
+    <div class="col-stack">
+      <div class="card">
+        <h3><span class="ico">+</span>Adicionar dispositivo</h3>
+        <div id="connect-form">
+          <input id="inp-name" type="text" placeholder="Nome  (ex: PC-Sala-01)" maxlength="24" autocomplete="off">
+          <input id="inp-ip"   type="text" placeholder="IP  (opcional — auto se vazio)" maxlength="15" autocomplete="off">
+          <button class="btn-primary" onclick="connectDevice()">+ Conectar dispositivo</button>
+          <button class="btn-primary" style="background:var(--amber);color:#000;margin-top:6px" onclick="addRandomDevices(5)">⚡ Gerar 5 dispositivos (simulação)</button>
+          <span id="connect-status" role="status"></span>
+        </div>
+      </div>
+
+      <div class="card" style="flex:1">
+        <h3 class="amber"><span class="ico">!</span>Feed de alertas</h3>
+        <p id="feed-empty" class="feed-empty">Aguardando eventos…</p>
+        <ul id="ai-feed" role="log" aria-live="polite" aria-label="Alertas de segurança"></ul>
+      </div>
+    </div>
+
+  </div>
+</div><!-- /#dashboard -->
+
+<div id="toast-container" aria-live="polite"></div>
+
+<script>
+'use strict';
+
+/* ═══════════════════════════════════════════════════
+   CONSTANTES
+═══════════════════════════════════════════════════ */
+const TICK_SEC = 2.5;
+const SIMULATED_MIN_PER_TICK = 2;
+const MAX_FEED_ITEMS = 12;
+
+/* ═══════════════════════════════════════════════════
+   AUTENTICAÇÃO (hash SHA-256, persistência localStorage)
+═══════════════════════════════════════════════════ */
+const STORAGE_KEY = 'bib_seg_auth_v1';
+const DEFAULT_USER = 'admin';
+const DEFAULT_PASS = 'admin123';
+
+let auth = { user: DEFAULT_USER, passHash: null };
+let currentUser = null;
+
+async function sha256(text) {
+  try {
+    if (window.crypto && crypto.subtle) {
+      const buf = new TextEncoder().encode(text);
+      const hash = await crypto.subtle.digest('SHA-256', buf);
+      return Array.from(new Uint8Array(hash))
+        .map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+  } catch (_) {}
+  // Fallback: marcador determinístico (sem crypto.subtle disponível)
+  return 'plain:' + text;
+}
+
+async function loadAuth() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const data = JSON.parse(raw);
+      if (data && typeof data.passHash === 'string') {
+        auth = { user: data.user || DEFAULT_USER, passHash: data.passHash };
+        return;
+      }
+    }
+  } catch (_) {}
+  auth.passHash = await sha256(DEFAULT_PASS);
+}
+
+function saveAuth() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(auth)); } catch (_) {}
+}
+
+async function tryLogin() {
+  const userEl = document.getElementById('inp-user');
+  const passEl = document.getElementById('inp-pass');
+  const errEl  = document.getElementById('login-error');
+  const user   = userEl.value.trim();
+  const pass   = passEl.value;
+
+  userEl.classList.remove('error');
+  passEl.classList.remove('error');
+  errEl.textContent = '';
+
+  if (!user || !pass) {
+    errEl.textContent = '⚠ Preenche todos os campos.';
+    return;
+  }
+
+  // Garante que o hash padrão já foi calculado antes de comparar
+  if (!auth.passHash) { try { await // Boot: garante auth pronto antes de qualquer login
+loadAuth().catch(err => {
+  console.warn('loadAuth falhou, usando fallback texto puro:', err);
+  auth.passHash = null; // tryLogin aceitará DEFAULT_PASS via fallback
+}); } catch (_) {} }
+
+  const hash = await sha256(pass);
+  const validHash = auth.passHash && hash === auth.passHash;
+  // Fallback: aceita também a senha em texto puro (caso loadAuth tenha falhado por falta de crypto.subtle)
+  const validPlain = !auth.passHash && pass === DEFAULT_PASS;
+
+  if (user === auth.user && (validHash || validPlain)) {
+    currentUser = user;
+    document.getElementById('admin-name').textContent = user;
+    const loginScreen = document.getElementById('login-screen');
+    loginScreen.classList.add('hidden');
+    setTimeout(() => {
+      loginScreen.style.display = 'none';
+      document.getElementById('dashboard').classList.add('visible');
+      passEl.value = '';
+      startLoop();
+      detectSystemInfo();
+      addFeedAlert('success',
+        `<span class="tag tag-green">SESSÃO</span><strong>${escapeHTML(user)}</strong> autenticou-se com sucesso.`,
+        false
+      );
+    }, 380);
+  } else {
+    errEl.textContent = '✕ Credenciais incorretas.';
+    userEl.classList.add('error');
+    passEl.classList.add('error');
+    passEl.value = '';
+    const box = document.querySelector('.login-box');
+    box.style.animation = 'none';
+    void box.offsetHeight;
+    box.style.animation = 'shake .3s ease';
+  }
+}
+
+function logout() {
+  currentUser = null;
+  stopLoop();
+  document.getElementById('inp-user').value = '';
+  document.getElementById('inp-pass').value = '';
+  document.getElementById('login-error').textContent = '';
+  document.getElementById('inp-user').classList.remove('error');
+  document.getElementById('inp-pass').classList.remove('error');
+  const loginScreen = document.getElementById('login-screen');
+  loginScreen.style.display = 'flex';
+  loginScreen.style.animation = 'fadeIn .4s ease';
+  loginScreen.classList.remove('hidden');
+  document.getElementById('dashboard').classList.remove('visible');
+}
+
+async function changePassword() {
+  const oldPass  = document.getElementById('old-pass').value;
+  const newPass  = document.getElementById('new-pass').value;
+  const newPass2 = document.getElementById('new-pass2').value;
+  const statusEl = document.getElementById('pass-status');
+
+  const setErr = (msg) => { statusEl.textContent = msg; statusEl.style.color = 'var(--red)'; };
+
+  const oldHash = await sha256(oldPass);
+  if (oldHash !== auth.passHash)        return setErr('✕ Senha atual incorreta.');
+  if (newPass.length < 6)               return setErr('✕ Nova senha muito curta (mín. 6 caracteres).');
+  if (newPass !== newPass2)             return setErr('✕ As senhas não coincidem.');
+  if (newPass === oldPass)              return setErr('✕ A nova senha deve ser diferente da atual.');
+
+  auth.passHash = await sha256(newPass);
+  saveAuth();
+  document.getElementById('old-pass').value = '';
+  document.getElementById('new-pass').value = '';
+  document.getElementById('new-pass2').value = '';
+  statusEl.textContent = '✓ Senha atualizada com sucesso.';
+  statusEl.style.color = 'var(--green)';
+  showToast('success', 'Palavra-passe atualizada', 'A nova senha entra em vigor de imediato.');
+  setTimeout(() => { statusEl.textContent = ''; }, 3500);
+}
+
+/* ═══════════════════════════════════════════════════
+   INFO DO SISTEMA + WI-FI
+═══════════════════════════════════════════════════ */
+function detectSystemInfo() {
+  // Browser / plataforma
+  const ua = navigator.userAgent;
+  let browser = 'Desconhecido';
+  if (/Edg\//.test(ua))            browser = 'Edge';
+  else if (/Chrome\//.test(ua))    browser = 'Chrome';
+  else if (/Firefox\//.test(ua))   browser = 'Firefox';
+  else if (/Safari\//.test(ua))    browser = 'Safari';
+
+  let platform = navigator.userAgentData?.platform || navigator.platform || 'Desconhecido';
+  if (/Win/i.test(platform))       platform = 'Windows';
+  else if (/Mac/i.test(platform))  platform = 'macOS';
+  else if (/Linux/i.test(platform))platform = 'Linux';
+  else if (/Android/i.test(ua))    platform = 'Android';
+  else if (/iPhone|iPad/i.test(ua))platform = 'iOS';
+
+  document.getElementById('sys-platform').textContent = platform;
+  document.getElementById('sys-browser').textContent = browser;
+  document.getElementById('sys-cores').textContent = (navigator.hardwareConcurrency || '?') + ' núcleos';
+  document.getElementById('sys-mem').textContent = navigator.deviceMemory ? navigator.deviceMemory + ' GB' : 'N/D';
+  document.getElementById('sys-lang').textContent = navigator.language || 'pt';
+  document.getElementById('sys-res').textContent = `${screen.width}×${screen.height}`;
+
+  // Network Information API (real)
+  const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+  if (conn) {
+    const typeMap = { wifi:'Wi-Fi', ethernet:'Ethernet', cellular:'Móvel', '4g':'4G/LTE', '3g':'3G', '2g':'2G' };
+    document.getElementById('sys-conn').textContent = typeMap[conn.type] || conn.effectiveType?.toUpperCase() || 'Desconhecido';
+    document.getElementById('sys-speed').textContent = conn.downlink ? conn.downlink + ' Mbps' : 'N/D';
+    document.getElementById('sys-rtt').textContent = conn.rtt ? conn.rtt + ' ms' : 'N/D';
+
+    // Estimar sinal a partir do RTT
+    const rtt = conn.rtt || 80;
+    let bars = 4, sigClass = 'on', sigLabel = 'Excelente';
+    if (rtt > 300)      { bars = 1; sigClass = 'bad';  sigLabel = 'Fraco'; }
+    else if (rtt > 150) { bars = 2; sigClass = 'warn'; sigLabel = 'Médio'; }
+    else if (rtt > 80)  { bars = 3; sigClass = 'on';   sigLabel = 'Bom'; }
+    renderSignal(bars, sigClass, sigLabel);
+  } else {
+    document.getElementById('sys-conn').textContent = 'API indisponível';
+    document.getElementById('sys-speed').textContent = 'N/D';
+    document.getElementById('sys-rtt').textContent = 'N/D';
+    renderSignal(3, 'on', 'Bom');
+  }
+
+  // Dados Wi-Fi simulados (browser não dá acesso real)
+  const ssids = ['BIBLIOTECA-SEGURA', 'BIBLIOTECA-WIFI-5G', 'BIB-ADMIN'];
+  const channels = [1, 6, 11, 36, 44, 149];
+  document.getElementById('sys-ssid').textContent = ssids[Math.floor(Math.random()*ssids.length)];
+  document.getElementById('sys-channel').textContent = channels[Math.floor(Math.random()*channels.length)] + ' (5 GHz)';
+
+  // Estado online/offline
+  updateOnlineState();
+  window.addEventListener('online',  updateOnlineState);
+  window.addEventListener('offline', updateOnlineState);
+
+  // IP público + ISP via API gratuita
+  fetchPublicIPInfo();
+}
+
+function renderSignal(bars, cls, label) {
+  const el = document.getElementById('sys-signal');
+  let bar = '<span class="sig-bar">';
+  for (let i = 1; i <= 4; i++) {
+    bar += `<span class="${i <= bars ? cls : ''}" style="height:${i*2.5+2}px"></span>`;
+  }
+  bar += `</span> <span style="margin-left:6px;color:var(--text2);font-size:10px">${label}</span>`;
+  el.innerHTML = bar;
+}
+
+function updateOnlineState() {
+  const el = document.getElementById('sys-online-state');
+  if (navigator.onLine) {
+    el.textContent = '●  Online';
+    el.className = 'sys-val green';
+  } else {
+    el.textContent = '●  Offline';
+    el.className = 'sys-val';
+    el.style.color = 'var(--red)';
+    showToast('critical', 'Ligação perdida', 'O dispositivo está offline.');
+  }
+}
+
+async function fetchPublicIPInfo() {
+  try {
+    const res = await fetch('https://ipapi.co/json/');
+    if (!res.ok) throw new Error('Resposta não OK');
+    const data = await res.json();
+    document.getElementById('sys-ipv4').textContent = data.ip || 'N/D';
+    document.getElementById('sys-isp').textContent  = data.org || data.asn || 'N/D';
+    document.getElementById('sys-loc').textContent  = [data.city, data.country_name].filter(Boolean).join(', ') || 'N/D';
+  } catch (e) {
+    document.getElementById('sys-ipv4').textContent = 'Indisponível';
+    document.getElementById('sys-isp').textContent  = '—';
+    document.getElementById('sys-loc').textContent  = '—';
+  }
+}
+
+/* ═══════════════════════════════════════════════════
+   CHART
+═══════════════════════════════════════════════════ */
+const ctx = document.getElementById('trafficChart').getContext('2d');
+const trafficData = {
+  labels: [],
+  datasets: [{
+    label: 'Mbps total',
+    data: [],
+    borderColor: '#4a9eff',
+    backgroundColor: (ctx) => {
+      const g = ctx.chart.ctx.createLinearGradient(0, 0, 0, 200);
+      g.addColorStop(0, 'rgba(74,158,255,.25)');
+      g.addColorStop(1, 'rgba(74,158,255,0)');
+      return g;
+    },
+    fill: true, tension: .35, pointRadius: 2, borderWidth: 2,
+  }]
+};
+const chart = new Chart(ctx, {
+  type: 'line', data: trafficData,
+  options: {
+    animation: false,
+    responsive: true,
+    maintainAspectRatio: false,
+    interaction: { intersect: false, mode: 'index' },
+    scales: {
+      y: { min: 0, suggestedMax: 100,
+           ticks: { color: '#4a5568', font: { family: "'JetBrains Mono'", size: 10 } },
+           grid: { color: '#1c2030' } },
+      x: { ticks: { color: '#4a5568', maxTicksLimit: 6, font: { family: "'JetBrains Mono'", size: 9 } },
+           grid: { color: '#1c2030' } }
+    },
+    plugins: {
+      legend: { labels: { color: '#8899aa', font: { family: "'Syne'", size: 11 } } },
+      tooltip: {
+        backgroundColor: '#0e1016', borderColor: '#252b3a', borderWidth: 1,
+        titleColor: '#c8d3e0', bodyColor: '#8899aa', padding: 8,
+      }
+    }
+  }
+});
+
+/* ═══════════════════════════════════════════════════
+   ESTADO
+═══════════════════════════════════════════════════ */
+const devices = {};
+let limitGB        = 10;
+let windowMin      = 60;
+let alertCount     = 0;
+let resolvedCount  = 0;
+let confirmedCount = 0;
+let loopRef        = null;
+let autoBlock      = true;
+let ruleMbps       = 50;
+let ruleStrikes    = 3;
+let activeTab      = 'online';
+
+/* ═══════════════════════════════════════════════════
+   UTILS
+═══════════════════════════════════════════════════ */
+function escapeHTML(s) {
+  const d = document.createElement('div');
+  d.appendChild(document.createTextNode(String(s)));
+  return d.innerHTML;
+}
+function validateIP(ip) {
+  return /^(\d{1,3}\.){3}\d{1,3}$/.test(ip) && ip.split('.').every(n => +n >= 0 && +n <= 255);
+}
+function nowTime() {
+  return new Date().toLocaleTimeString('pt-PT');
+}
+
+/* ═══════════════════════════════════════════════════
+   CONFIGS
+═══════════════════════════════════════════════════ */
+function onLimitChange(v) {
+  limitGB = +v;
+  document.getElementById('val-limit').textContent = v + ' GB';
+  document.getElementById('stat-limit').textContent = v;
+}
+function setWindow(btn) {
+  document.querySelectorAll('.wbtn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  windowMin = +btn.dataset.min;
+  const labels = { '60': '1 h', '360': '6 h', '1440': '24 h' };
+  document.getElementById('stat-window').textContent = labels[windowMin] || windowMin + 'm';
+  Object.values(devices).forEach(d => {
+    d.downloadGB = 0;
+    d.windowElapsed = 0;
+    d.overLimitAlerted = false;
+  });
+  renderDeviceList();
+}
+function toggleAutoBlock() {
+  autoBlock = !autoBlock;
+  document.getElementById('sw-autoblock').classList.toggle('on', autoBlock);
+  showToast(autoBlock ? 'success' : 'warning',
+    'Auto-bloqueio ' + (autoBlock ? 'ativado' : 'desativado'),
+    autoBlock ? 'Dispositivos suspeitos serão bloqueados automaticamente.'
+              : 'Apenas alertas — sem bloqueios automáticos.');
+}
+function updateRules() {
+  const m = +document.getElementById('rule-mbps').value;
+  const s = +document.getElementById('rule-strikes').value;
+  if (m >= 1)  ruleMbps = m;
+  if (s >= 1)  ruleStrikes = s;
+}
+
+/* ═══════════════════════════════════════════════════
+   DISPOSITIVOS
+═══════════════════════════════════════════════════ */
+function connectDevice() {
+  const nameEl = document.getElementById('inp-name');
+  const ipEl   = document.getElementById('inp-ip');
+  const name   = nameEl.value.trim() || autoDeviceName();
+  let ip       = ipEl.value.trim();
+
+  if (name.length < 2) {
+    showToast('warning','Nome inválido','Usa pelo menos 2 caracteres.');
+    return setStatus('⚠ Nome demasiado curto.', 'var(--amber)');
+  }
+  if (!ip) ip = autoFreeIP();
+  if (!validateIP(ip)) {
+    showToast('warning','IP inválido','Formato esperado: 192.168.1.42');
+    return setStatus('⚠ IP inválido.', 'var(--amber)');
+  }
+  if (Object.values(devices).some(d => d.ip === ip)) {
+    showToast('warning','IP duplicado',`${ip} já está em uso.`);
+    return setStatus('⚠ IP já registado.', 'var(--amber)');
+  }
+
+  const id = 'dev-' + Date.now() + '-' + Math.random().toString(36).slice(2,7);
+  devices[id] = {
+    id, name, ip,
+    online: true,
+    blocked: false,
+    blockReason: null,
+    blockedAt: null,
+    mbps: 0,
+    downloadGB: 0,
+    windowElapsed: 0,
+    overLimitAlerted: false,
+    overLimitStrikes: 0,
+    addedAt: Date.now(),
+  };
+
+  nameEl.value = ''; ipEl.value = '';
+  nameEl.focus();
+  setStatus('✓ ' + name + ' conectado.', 'var(--green)');
+  showToast('info','Dispositivo conectado',`${name} (${ip})`);
+  setTimeout(() => setStatus('', ''), 2500);
+  renderDeviceList();
+  renderBlockedList();
+  updateHeaderStats();
+  return id;
+}
+
+/* Helpers para gerar nomes/IPs livres automaticamente */
+function autoDeviceName() {
+  const prefixes = ['PC-Sala','Tablet','Laptop','iMac','Workstation','Terminal','Quiosque'];
+  const p = prefixes[Math.floor(Math.random()*prefixes.length)];
+  const n = String(Math.floor(Math.random()*89)+10);
+  return `${p}-${n}`;
+}
+function autoFreeIP() {
+  const used = new Set(Object.values(devices).map(d => d.ip));
+  for (let i = 10; i < 250; i++) {
+    const ip = `192.168.1.${i}`;
+    if (!used.has(ip)) return ip;
+  }
+  return `10.0.0.${Math.floor(Math.random()*240)+10}`;
+}
+
+/* Geração em massa para simular tráfego rapidamente */
+function addRandomDevices(count = 5) {
+  let added = 0;
+  for (let i = 0; i < count; i++) {
+    const nameEl = document.getElementById('inp-name');
+    const ipEl   = document.getElementById('inp-ip');
+    nameEl.value = ''; ipEl.value = '';
+    if (connectDevice()) added++;
+  }
+  showToast('info','Simulação iniciada', `${added} dispositivos adicionados.`);
+}
+function setStatus(msg, color) {
+  const el = document.getElementById('connect-status');
+  el.textContent = msg;
+  el.style.color = color;
+}
+function disconnectDevice(id) {
+  if (!devices[id]) return;
+  delete devices[id];
+  renderDeviceList();
+  renderBlockedList();
+  updateHeaderStats();
+}
+function blockDevice(id, reason) {
+  const d = devices[id];
+  if (!d || d.blocked) return;
+  d.blocked = true;
+  d.blockReason = reason || 'Bloqueado pelo administrador';
+  d.blockedAt = Date.now();
+  d.mbps = 0;
+  addFeedAlert('critical',
+    `<span class="tag tag-red">BLOQUEADO</span><strong>${escapeHTML(d.name)}</strong> (${escapeHTML(d.ip)})<br>${escapeHTML(d.blockReason)}`,
+    false);
+  showToast('critical', 'Dispositivo bloqueado', `${d.name} (${d.ip})`);
+  renderDeviceList();
+  renderBlockedList();
+  updateHeaderStats();
+}
+function unblockDevice(id) {
+  const d = devices[id];
+  if (!d) return;
+  d.blocked = false;
+  d.blockReason = null;
+  d.overLimitStrikes = 0;
+  d.downloadGB = 0;
+  d.windowElapsed = 0;
+  d.overLimitAlerted = false;
+  showToast('success', 'Dispositivo desbloqueado', `${d.name} pode voltar a comunicar.`);
+  renderDeviceList();
+  renderBlockedList();
+  updateHeaderStats();
+}
+
+/* ═══════════════════════════════════════════════════
+   RENDER
+═══════════════════════════════════════════════════ */
+function switchTab(btn) {
+  document.querySelectorAll('.dtab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  activeTab = btn.dataset.tab;
+  document.getElementById('tab-online').style.display  = activeTab === 'online'  ? 'block' : 'none';
+  document.getElementById('tab-blocked').style.display = activeTab === 'blocked' ? 'block' : 'none';
+}
+
+function renderDeviceList() {
+  const list    = document.getElementById('device-list');
+  const noDevEl = document.getElementById('no-devices');
+  const online  = Object.values(devices).filter(d => d.online && !d.blocked);
+
+  list.innerHTML = '';
+  noDevEl.style.display = online.length === 0 ? 'block' : 'none';
+
+  online.forEach(d => {
+    const pct      = Math.min((d.downloadGB / limitGB) * 100, 100);
+    const barColor = pct >= 100 ? 'var(--red)' : pct >= 75 ? 'var(--amber)' : 'var(--green)';
+    const dotClass = pct >= 100 ? 'alerting' : 'online';
+    const itemCls  = pct >= 100 ? 'device-item alerting' : pct >= 75 ? 'device-item over-limit' : 'device-item';
+    const remain   = Math.max(0, windowMin - d.windowElapsed);
+    const safeId   = escapeHTML(d.id);
+
+    const li = document.createElement('li');
+    li.className = itemCls;
+    li.id = 'row-' + d.id;
+    li.innerHTML = `
+      <div class="device-top">
+        <span class="dot ${dotClass}"></span>
+        <span class="device-name" title="${escapeHTML(d.name)}">${escapeHTML(d.name)}</span>
+        <span class="device-ip">${escapeHTML(d.ip)}</span>
+        <span class="device-mbps ${d.mbps > 15 ? 'hot' : 'normal'}" id="mbps-${safeId}">${d.mbps.toFixed(1)} Mbps</span>
+        <div class="device-actions">
+          <button class="btn-mini block"  onclick="blockDevice('${safeId}','Bloqueado manualmente')" title="Bloquear">⊘</button>
+          <button class="btn-mini disc"   onclick="disconnectDevice('${safeId}')" title="Remover">✕</button>
+        </div>
+      </div>
+      <div class="progress-wrap">
+        <div class="progress-track">
+          <div class="progress-bar" style="width:${pct.toFixed(1)}%;background:${barColor}"></div>
+        </div>
+        <div class="progress-info">
+          <span>${d.downloadGB.toFixed(2)} GB / ${limitGB} GB</span>
+          <span>reset em ~${remain} min · strikes: ${d.overLimitStrikes}</span>
+        </div>
+      </div>`;
+    list.appendChild(li);
+  });
+
+  document.getElementById('tab-count-online').textContent = online.length;
+}
+
+function renderBlockedList() {
+  const list   = document.getElementById('blocked-list');
+  const noEl   = document.getElementById('no-blocked');
+  const blocked = Object.values(devices).filter(d => d.blocked);
+
+  list.innerHTML = '';
+  noEl.style.display = blocked.length === 0 ? 'block' : 'none';
+
+  blocked.forEach(d => {
+    const safeId = escapeHTML(d.id);
+    const when = d.blockedAt ? new Date(d.blockedAt).toLocaleTimeString('pt-PT') : '—';
+    const li = document.createElement('li');
+    li.className = 'device-item blocked';
+    li.innerHTML = `
+      <div class="device-top">
+        <span class="dot blocked"></span>
+        <span class="device-name">${escapeHTML(d.name)}</span>
+        <span class="device-ip">${escapeHTML(d.ip)}</span>
+        <span class="device-mbps blocked">BLOQUEADO</span>
+        <div class="device-actions">
+          <button class="btn-mini unblock" onclick="unblockDevice('${safeId}')" title="Desbloquear">↻</button>
+          <button class="btn-mini disc"    onclick="disconnectDevice('${safeId}')" title="Remover">✕</button>
+        </div>
+      </div>
+      <span class="block-reason">⊘ ${escapeHTML(d.blockReason || 'Sem motivo')} · ${when}</span>`;
+    list.appendChild(li);
+  });
+
+  document.getElementById('tab-count-blocked').textContent = blocked.length;
+  document.getElementById('count-blocked').textContent     = blocked.length;
+}
+
+function updateHeaderStats() {
+  document.getElementById('count-online').textContent =
+    Object.values(devices).filter(d => d.online && !d.blocked).length;
+  document.getElementById('count-blocked').textContent =
+    Object.values(devices).filter(d => d.blocked).length;
+}
+
+/* ═══════════════════════════════════════════════════
+   FEED & TOASTS
+═══════════════════════════════════════════════════ */
+function addFeedAlert(type, html, controls = true) {
+  alertCount++;
+  document.getElementById('count-alerts').textContent = alertCount;
+  document.getElementById('feed-empty').style.display = 'none';
+
+  const feed    = document.getElementById('ai-feed');
+  const item    = document.createElement('li');
+  const alertId = 'alert-' + Date.now() + '-' + Math.random().toString(36).slice(2);
+  item.className = 'feed-item ' + type;
+  item.id = alertId;
+
+  let inner = `<span class="feed-time">${nowTime()}</span>` + html;
+  if (controls) {
+    inner += `
+      <div class="ai-controls">
+        <button class="btn-ai btn-confirm" onclick="resolveAlert('${alertId}',true)">✓ Confirmar</button>
+        <button class="btn-ai btn-ignore"  onclick="resolveAlert('${alertId}',false)">~ Falso positivo</button>
+      </div>`;
+  }
+  item.innerHTML = inner;
+  feed.prepend(item);
+  if (feed.children.length > MAX_FEED_ITEMS) feed.lastElementChild.remove();
+}
+
+function resolveAlert(alertId, isThreat) {
+  const el = document.getElementById(alertId);
+  if (!el) return;
+  resolvedCount++;
+  if (isThreat) confirmedCount++;
+  alertCount = Math.max(0, alertCount - 1);
+  document.getElementById('count-alerts').textContent = alertCount;
+  const acc = resolvedCount > 0 ? Math.round(confirmedCount / resolvedCount * 100) + '%' : '—';
+  document.getElementById('ai-accuracy').textContent = acc;
+  el.style.opacity = '.55';
+  const ctrl = el.querySelector('.ai-controls');
+  if (ctrl) ctrl.innerHTML = isThreat
+    ? '<span style="color:var(--red);font-size:9px">▲ AMEAÇA CONFIRMADA</span>'
+    : '<span style="color:var(--amber);font-size:9px">— ARQUIVADO</span>';
+}
+
+function showToast(type, title, sub) {
+  const c = document.getElementById('toast-container');
+  const t = document.createElement('div');
+  t.className = 'toast ' + type;
+  t.innerHTML = `<strong>${escapeHTML(title)}</strong>${sub ? `<div class="t-sub">${escapeHTML(sub)}</div>` : ''}`;
+  c.appendChild(t);
+  setTimeout(() => {
+    t.style.transition = 'opacity .25s, transform .25s';
+    t.style.opacity = '0';
+    t.style.transform = 'translateX(20px)';
+    setTimeout(() => t.remove(), 260);
+  }, 4200);
+}
+
+/* ═══════════════════════════════════════════════════
+   LOOP
+═══════════════════════════════════════════════════ */
+function startLoop() {
+  if (loopRef) return;
+  loopRef = setInterval(update, TICK_SEC * 1000);
+  update();
+}
+function stopLoop() {
+  if (loopRef) { clearInterval(loopRef); loopRef = null; }
+}
+
+function update() {
+  document.getElementById('clock').textContent = nowTime();
+  let totalMbps = 0;
+
+  Object.values(devices).filter(d => d.online && !d.blocked).forEach(d => {
+    const isHeavy = Math.random() > 0.85;
+    d.mbps = isHeavy ? 20 + Math.random() * 60 : 1 + Math.random() * 7;
+
+    const simulatedSeconds = SIMULATED_MIN_PER_TICK * 60;
+    const factor = simulatedSeconds / TICK_SEC;
+    const downloadedGB = (d.mbps * TICK_SEC * factor) / 8 / 1024;
+
+    d.downloadGB    += downloadedGB;
+    d.windowElapsed += SIMULATED_MIN_PER_TICK;
+    totalMbps       += d.mbps;
+
+    // Reset janela
+    if (d.windowElapsed >= windowMin) {
+      d.downloadGB       = 0;
+      d.windowElapsed    = 0;
+      d.overLimitAlerted = false;
+      addFeedAlert('warning',
+        `<span class="tag tag-amber">RESET</span><strong>${escapeHTML(d.name)}</strong> (${escapeHTML(d.ip)})<br>Janela expirou — contador reiniciado.`,
+        false
+      );
+    }
+
+    // Limite GB
+    if (d.downloadGB >= limitGB && !d.overLimitAlerted) {
+      d.overLimitAlerted = true;
+      d.overLimitStrikes++;
+      addFeedAlert('critical',
+        `<span class="tag tag-red">LIMITE</span><strong>${escapeHTML(d.name)}</strong> (${escapeHTML(d.ip)})<br>
+         Excedeu <strong style="color:var(--amber)">${limitGB} GB</strong> · strike ${d.overLimitStrikes}/${ruleStrikes} · total ${d.downloadGB.toFixed(2)} GB`
+      );
+
+      if (autoBlock && d.overLimitStrikes >= ruleStrikes) {
+        blockDevice(d.id, `Auto-bloqueio: ${d.overLimitStrikes} excessos de quota`);
+        return;
+      }
+    }
+
+    // Mbps suspeito
+    if (autoBlock && d.mbps > ruleMbps) {
+      blockDevice(d.id, `Auto-bloqueio: pico ${d.mbps.toFixed(1)} Mbps (limite ${ruleMbps})`);
+      return;
+    }
+
+    // Inline mbps
+    const mbpsEl = document.getElementById('mbps-' + d.id);
+    if (mbpsEl) {
+      mbpsEl.textContent = d.mbps.toFixed(1) + ' Mbps';
+      mbpsEl.className = d.mbps > 15 ? 'device-mbps hot' : 'device-mbps normal';
+    }
+  });
+
+  renderDeviceList();
+  renderBlockedList();
+  updateHeaderStats();
+
+  if (trafficData.labels.length > 18) {
+    trafficData.labels.shift();
+    trafficData.datasets[0].data.shift();
+  }
+  trafficData.labels.push(nowTime().slice(0,5));
+  trafficData.datasets[0].data.push(+totalMbps.toFixed(1));
+  chart.update('none');
+}
+
+window.addEventListener('beforeunload', stopLoop);
+
+/* ═══════════════════════════════════════════════════
+   BOOT
+═══════════════════════════════════════════════════ */
+// Boot: garante auth pronto antes de qualquer login
+loadAuth().catch(err => {
+  console.warn('loadAuth falhou, usando fallback texto puro:', err);
+  auth.passHash = null; // tryLogin aceitará DEFAULT_PASS via fallback
+});
+
+/* Atalhos: Enter nos inputs aciona connectDevice() */
+document.addEventListener('DOMContentLoaded', () => {
+  ['inp-name','inp-ip'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); connectDevice(); }
+    });
+  });
+});
+</script>
+</body>
+</html>
